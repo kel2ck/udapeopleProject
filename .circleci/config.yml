@@ -113,8 +113,12 @@ jobs:
             cd backend
             npm install
             npm audit fix --audit-level=critical --force
-            npm run test
-            
+            npm run testjh
+      - slack/notify:
+          event: fail
+          mentions: '@EngineeringTeam'
+          template: basic_fail_1
+          
   scan-frontend:
     docker:
       - image: circleci/node:13.8.0
