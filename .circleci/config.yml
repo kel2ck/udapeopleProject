@@ -418,24 +418,40 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7} 
 
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
+  cleanup:
+    docker: 
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Install tar utility
+          command: |
+            yum install -y tar gzip
+      - attach_workspace:
+          at: ~/.circleci/ansible/inventory.txt
+      - run:
+          name: Get old stack workflow id
+          command: |
+            #Get old workflow if from kvdb.io
+            OldWorkflowID=$(curl --insecure  https://kvdb.io/VMYQi71XYivasRDqmX9fy9/oldstackname)
+
+            echo OldWorkflowID: "${OldWorkflowID}"
+            echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
+            # Fetch the stack names          
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
+            echo Stack names: "${STACKS[@]}" 
+            if [[ "${CIRCLE_WORKFLOW_ID:0:7}" != "${OldWorkflowID}" ]]
+            then
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+              echo "-----------------------------Delete Completed---------------------------"
+            else
+              echo "-----------------------------Delete Imposible---------------------------"
+              echo "$OldWorkflowID==$CurrentWorkflowID => nothing needs to be done..."
+            fi     
+  
             
 
 workflows:
@@ -468,5 +484,5 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+      - cleanup:
+          requires: [cloudfront-update]
