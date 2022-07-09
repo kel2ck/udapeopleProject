@@ -433,7 +433,7 @@ jobs:
           name: Get old stack workflow id
           command: |
             #Get old workflow if from kvdb.io
-            OldWorkflowID=$(curl --insecure  https://kvdb.io/VMYQi71XYivasRDqmX9fy9/oldstackname)
+            OldWorkflowID=$(curl --insecure  https://kvdb.io/VMYQi71XYivasRDqmX9fy9/OldWorkflowID)
 
             echo OldWorkflowID: "${OldWorkflowID}"
             echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
