@@ -342,43 +342,50 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
-#   smoke-test:
-#     docker:
-#       # Lightweight Docker image 
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Install dependencies
-#           command: |
-#             # your code here
-#       - run:
-#           name: Get backend url
-#           command: |
-#             # your code here
-#       - run:
-#           name: Backend smoke test.
-#           command: |
-#             # your code here
-#       - run:
-#           name: Frontend smoke test.
-#           command: |
-#             # your code here
-#       # Here's where you will add some code to rollback on failure  
-
-#   cloudfront-update:
-#     docker:
-#       # Docker image here that supports AWS CLI
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Install dependencies
-#           command: |
-#             # your code here
-#       - run:
-#           name: Update cloudfront distribution
-#           command: |
-#             # your code here
-#       # Here's where you will add some code to rollback on failure  
+  smoke-test:
+    docker:
+      - image: python:3.7-alpine3.11
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/.circleci/ansible/inventory.txt
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update curl nodejs npm
+            pip install awscli
+      - run:
+          name: Get backend url and run backend smoke test
+          command: |
+            export BACKEND_IP=$(
+              aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --output text
+            )
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "${API_URL}"
+            if curl "${API_URL}/api/status" | grep "ok"
+            then
+                return 0
+            else
+                return 1
+            fi
+      - run:
+          name: Frontend smoke test.
+          command: |
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-us-east-1.amazonaws.com/#/employees"            
+            echo ${URL} 
+            if curl -s ${URL} | grep "Welcome"
+            then
+              return 1
+            else
+              return 1
+            fi
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
 # cleanup:
 #     docker:
